@@ -11,7 +11,7 @@ import {
   ClipboardListIcon,
   CheckCircleIcon,
   ClockIcon
-} from '@heroicons/react/24/outline';
+} from '@heroicons/react/outline';
 import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {

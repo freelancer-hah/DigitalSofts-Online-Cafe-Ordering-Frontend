@@ -6,20 +6,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingBagIcon, 
   UserCircleIcon,
-  Bars3Icon,
-  XMarkIcon,
+  MenuIcon,           // v1 name (instead of Bars3Icon)
+  XIcon,              // v1 name (instead of XMarkIcon)
   ShieldCheckIcon,
   HomeIcon,
-  ClipboardDocumentListIcon,
+  ClipboardListIcon,
   UsersIcon,
   CakeIcon,
   ChartBarIcon,
-  ArrowRightOnRectangleIcon,
-  MagnifyingGlassIcon,
+  LogoutIcon,         // v1 name (instead of ArrowRightOnRectangleIcon)
+  SearchIcon,         // v1 name (instead of MagnifyingGlassIcon)
   PhoneIcon,
   InformationCircleIcon,
-  Cog6ToothIcon
-} from '@heroicons/react/24/outline';
+  CogIcon             // v1 name (instead of Cog6ToothIcon)
+} from '@heroicons/react/outline';
 
 const Navbar = () => {
   const { cartCount } = useCart();
@@ -51,15 +51,15 @@ const Navbar = () => {
     { to: '/menu', label: 'Menu', icon: <CakeIcon className="h-5 w-5" /> },
     { to: '/about', label: 'About', icon: <InformationCircleIcon className="h-5 w-5" /> },
     { to: '/contact', label: 'Contact', icon: <PhoneIcon className="h-5 w-5" /> },
-    { to: '/track', label: 'Track', icon: <MagnifyingGlassIcon className="h-5 w-5" /> },
+    { to: '/track', label: 'Track', icon: <SearchIcon className="h-5 w-5" /> },
   ];
 
   // Admin navigation links
   const adminNavLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: <ChartBarIcon className="h-5 w-5" /> },
     { to: '/admin/menu', label: 'Menu', icon: <CakeIcon className="h-5 w-5" /> },
-    { to: '/admin/kitchen', label: 'Kitchen', icon: <ClipboardDocumentListIcon className="h-5 w-5" /> },
-    { to: '/admin/orders', label: 'Orders', icon: <ClipboardDocumentListIcon className="h-5 w-5" /> },
+    { to: '/admin/kitchen', label: 'Kitchen', icon: <ClipboardListIcon className="h-5 w-5" /> },
+    { to: '/admin/orders', label: 'Orders', icon: <ClipboardListIcon className="h-5 w-5" /> },
     { to: '/admin/users', label: 'Users', icon: <UsersIcon className="h-5 w-5" /> },
   ];
 
@@ -195,7 +195,7 @@ const Navbar = () => {
                           onClick={handleLogout}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all"
                         >
-                          <ArrowRightOnRectangleIcon className="h-5 w-5 text-red-400" />
+                          <LogoutIcon className="h-5 w-5 text-red-400" />
                           Logout
                         </button>
                       </div>
@@ -255,9 +255,9 @@ const Navbar = () => {
             className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-all"
           >
             {isMobileMenuOpen ? (
-              <XMarkIcon className="h-6 w-6 text-white" />
+              <XIcon className="h-6 w-6 text-white" />
             ) : (
-              <Bars3Icon className="h-6 w-6 text-white" />
+              <MenuIcon className="h-6 w-6 text-white" />
             )}
           </button>
         </div>
@@ -303,7 +303,7 @@ const Navbar = () => {
                     onClick={handleLogout}
                     className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-300 hover:text-red-200 hover:bg-white/10 transition-all"
                   >
-                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                    <LogoutIcon className="h-5 w-5" />
                     Logout
                   </button>
                 </div>
@@ -366,7 +366,7 @@ const Navbar = () => {
                         onClick={handleLogout}
                         className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-300 hover:text-red-200 hover:bg-white/10 transition-all"
                       >
-                        <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                        <LogoutIcon className="h-5 w-5" />
                         Logout
                       </button>
                     </>

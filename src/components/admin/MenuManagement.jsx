@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   XCircleIcon
-} from '@heroicons/react/24/outline';
+} from '@heroicons/react/outline';
 import toast from 'react-hot-toast';
 
 const MenuManagement = () => {
