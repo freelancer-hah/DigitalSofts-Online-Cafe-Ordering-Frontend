@@ -1,28 +1,42 @@
-// frontend/src/components/common/Navbar.jsx
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ShoppingCartIcon, 
+  ShoppingBagIcon, 
   UserCircleIcon,
-  MenuIcon,
-  XIcon,
+  Bars3Icon,
+  XMarkIcon,
   ShieldCheckIcon,
   HomeIcon,
-  ClipboardListIcon,
+  ClipboardDocumentListIcon,
   UsersIcon,
   CakeIcon,
   ChartBarIcon,
-  CogIcon
-} from '@heroicons/react/outline';
+  ArrowRightOnRectangleIcon,
+  MagnifyingGlassIcon,
+  PhoneIcon,
+  InformationCircleIcon,
+  Cog6ToothIcon
+} from '@heroicons/react/24/outline';
 
 const Navbar = () => {
   const { cartCount } = useCart();
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAdminMenuOpen, setIsAdminMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -33,83 +47,112 @@ const Navbar = () => {
 
   // Normal user navigation links
   const userNavLinks = [
-    { to: '/', label: 'Home' },
-    { to: '/menu', label: 'Menu' },
-    { to: '/about', label: 'About' },
-    { to: '/contact', label: 'Contact' },
-    { to: '/track', label: 'Track Order' },
+    { to: '/', label: 'Home', icon: <HomeIcon className="h-5 w-5" /> },
+    { to: '/menu', label: 'Menu', icon: <CakeIcon className="h-5 w-5" /> },
+    { to: '/about', label: 'About', icon: <InformationCircleIcon className="h-5 w-5" /> },
+    { to: '/contact', label: 'Contact', icon: <PhoneIcon className="h-5 w-5" /> },
+    { to: '/track', label: 'Track', icon: <MagnifyingGlassIcon className="h-5 w-5" /> },
   ];
 
   // Admin navigation links
   const adminNavLinks = [
     { to: '/admin/dashboard', label: 'Dashboard', icon: <ChartBarIcon className="h-5 w-5" /> },
-    { to: '/admin/menu', label: 'Menu Management', icon: <CakeIcon className="h-5 w-5" /> },
-    { to: '/admin/kitchen', label: 'Kitchen Board', icon: <ClipboardListIcon className="h-5 w-5" /> },
-    { to: '/admin/orders', label: 'Order Management', icon: <ClipboardListIcon className="h-5 w-5" /> },
-    { to: '/admin/users', label: 'User Management', icon: <UsersIcon className="h-5 w-5" /> },
+    { to: '/admin/menu', label: 'Menu', icon: <CakeIcon className="h-5 w-5" /> },
+    { to: '/admin/kitchen', label: 'Kitchen', icon: <ClipboardDocumentListIcon className="h-5 w-5" /> },
+    { to: '/admin/orders', label: 'Orders', icon: <ClipboardDocumentListIcon className="h-5 w-5" /> },
+    { to: '/admin/users', label: 'Users', icon: <UsersIcon className="h-5 w-5" /> },
   ];
 
-  // Admin dropdown links
-  const adminDropdownLinks = [
-    { to: '/admin/dashboard', label: 'Dashboard', icon: <ChartBarIcon className="h-4 w-4" /> },
-    { to: '/admin/menu', label: 'Menu Management', icon: <CakeIcon className="h-4 w-4" /> },
-    { to: '/admin/kitchen', label: 'Kitchen Board', icon: <ClipboardListIcon className="h-4 w-4" /> },
-    { to: '/admin/orders', label: 'Orders', icon: <ClipboardListIcon className="h-4 w-4" /> },
-    { to: '/admin/users', label: 'Users', icon: <UsersIcon className="h-4 w-4" /> },
-  ];
+  const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className="bg-gradient-to-r from-orange-600 to-orange-700 text-white sticky top-0 z-50 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <motion.nav
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5 }}
+      className={`fixed w-full top-0 z-50 transition-all duration-300 ${
+        scrolled 
+          ? 'bg-gradient-to-r from-orange-600 to-orange-700 shadow-2xl' 
+          : 'bg-gradient-to-r from-orange-600 to-orange-700'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
           {/* Logo */}
-          <Link to={isAdmin ? "/admin/dashboard" : "/"} className="flex items-center space-x-2">
-            <span className="text-2xl font-bold">🍽️ Spice Corner</span>
+          <Link 
+            to={isAdmin ? "/admin/dashboard" : "/"} 
+            className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0"
+          >
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
+              🍽️ Spice
+            </span>
+            <span className="text-lg sm:text-xl lg:text-2xl font-bold text-white hidden xs:inline">
+              Corner
+            </span>
             {isAdmin && (
-              <span className="text-xs bg-yellow-500 text-gray-900 px-2 py-0.5 rounded-full font-medium">
+              <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs bg-yellow-400 text-gray-900 px-1.5 sm:px-2.5 py-0.5 rounded-full font-bold shadow-lg">
                 Admin
               </span>
             )}
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {/* Show different nav links based on user role */}
+          {/* Desktop Navigation - Hidden on mobile */}
+          <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {isAdmin ? (
-              // ADMIN NAVIGATION
-              <>
-                {adminNavLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="text-white/90 hover:text-white hover:scale-105 transition-all duration-200 font-medium flex items-center gap-2"
-                  >
-                    {link.icon}
-                    {link.label}
-                  </Link>
-                ))}
-              </>
+              // Admin Desktop Navigation
+              adminNavLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`relative px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 flex items-center gap-1 lg:gap-2 ${
+                    isActive(link.to)
+                      ? 'bg-white/20 text-white shadow-lg'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-white/60">{link.icon}</span>
+                  <span className="hidden lg:inline">{link.label}</span>
+                  {isActive(link.to) && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"
+                    />
+                  )}
+                </Link>
+              ))
             ) : (
-              // USER NAVIGATION
-              <>
-                {userNavLinks.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    className="text-white/90 hover:text-white hover:scale-105 transition-all duration-200 font-medium"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </>
+              // User Desktop Navigation
+              userNavLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`relative px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 flex items-center gap-1 lg:gap-2 ${
+                    isActive(link.to)
+                      ? 'bg-white/20 text-white shadow-lg'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-white/60">{link.icon}</span>
+                  <span className="hidden lg:inline">{link.label}</span>
+                  {isActive(link.to) && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"
+                    />
+                  )}
+                </Link>
+              ))
             )}
 
             {/* Cart - Only for normal users */}
             {!isAdmin && (
-              <Link to="/cart" className="relative">
-                <ShoppingCartIcon className="h-6 w-6 hover:scale-110 transition-transform" />
+              <Link 
+                to="/cart" 
+                className="relative p-2 rounded-lg hover:bg-white/10 transition-all"
+              >
+                <ShoppingBagIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white/90" />
                 {cartCount > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center shadow-lg ring-2 ring-white">
                     {cartCount}
                   </span>
                 )}
@@ -118,83 +161,89 @@ const Navbar = () => {
 
             {/* Admin Section */}
             {isAdmin ? (
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <button
-                    onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
-                    className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2"
-                  >
-                    <ShieldCheckIcon className="h-5 w-5" />
-                    Admin Panel
-                    <span className="ml-1">▼</span>
-                  </button>
-                  
+              <div className="relative">
+                <button
+                  onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all flex items-center gap-1 lg:gap-2 shadow-lg"
+                >
+                  <ShieldCheckIcon className="h-4 w-4 lg:h-5 lg:w-5" />
+                  <span className="hidden sm:inline">Admin</span>
+                  <span className="ml-0.5 lg:ml-1">▼</span>
+                </button>
+                
+                <AnimatePresence>
                   {isAdminMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-1 border border-gray-200">
-                      {adminDropdownLinks.map((link) => (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-48 sm:w-56 bg-white rounded-xl shadow-2xl py-1 border border-gray-100 overflow-hidden z-50"
+                    >
+                      {adminNavLinks.map((link) => (
                         <Link
                           key={link.to}
                           to={link.to}
                           onClick={() => setIsAdminMenuOpen(false)}
-                          className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition flex items-center gap-3"
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
                         >
-                          <span className="text-orange-500">{link.icon}</span>
+                          <span className="text-gray-400">{link.icon}</span>
                           {link.label}
                         </Link>
                       ))}
-                      <hr className="my-1" />
-                      <button
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-3"
-                      >
-                        <CogIcon className="h-4 w-4" />
-                        Logout
-                      </button>
-                    </div>
+                      <div className="border-t border-gray-100">
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all"
+                        >
+                          <ArrowRightOnRectangleIcon className="h-5 w-5 text-red-400" />
+                          Logout
+                        </button>
+                      </div>
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
               </div>
             ) : (
-              // Admin Login Button - For normal users
+              // Admin Login Button
               <Link
                 to="/admin/login"
-                className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-full text-sm font-medium transition flex items-center gap-1"
+                className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-xs lg:text-sm font-bold transition-all flex items-center gap-1 shadow-lg"
               >
                 <ShieldCheckIcon className="h-4 w-4" />
-                Admin
+                <span className="hidden xs:inline">Admin</span>
               </Link>
             )}
 
             {/* User Section - Only for normal users */}
             {!isAdmin && (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1 lg:space-x-2">
                 {user ? (
                   <>
-                    <Link to="/profile" className="hover:text-white/80">
-                      <UserCircleIcon className="h-6 w-6" />
+                    <Link to="/profile" className="p-1.5 lg:p-2 rounded-lg hover:bg-white/10 transition-all">
+                      <UserCircleIcon className="h-6 w-6 sm:h-7 sm:w-7 text-white/90" />
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full text-sm font-medium transition"
+                      className="bg-white/10 hover:bg-white/20 text-white px-2 lg:px-3 py-1 rounded-full text-xs font-medium transition-all"
                     >
                       Logout
                     </button>
                   </>
                 ) : (
-                  <div className="flex items-center space-x-3">
+                  <>
                     <Link
                       to="/login"
-                      className="hover:text-white/80 font-medium"
+                      className="text-white/90 hover:text-white px-2 lg:px-3 py-1 rounded-full text-xs font-medium transition-all hover:bg-white/10"
                     >
                       Login
                     </Link>
                     <Link
                       to="/register"
-                      className="bg-white text-orange-600 hover:bg-orange-50 px-4 py-2 rounded-full font-medium transition"
+                      className="bg-white text-orange-600 hover:bg-orange-50 px-3 lg:px-4 py-1 rounded-full text-xs font-bold transition-all shadow-lg"
                     >
                       Sign Up
                     </Link>
-                  </div>
+                  </>
                 )}
               </div>
             )}
@@ -203,116 +252,149 @@ const Navbar = () => {
           {/* Mobile menu button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-white/10 transition"
+            className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-all"
           >
             {isMobileMenuOpen ? (
-              <XIcon className="h-6 w-6" />
+              <XMarkIcon className="h-6 w-6 text-white" />
             ) : (
-              <MenuIcon className="h-6 w-6" />
+              <Bars3Icon className="h-6 w-6 text-white" />
             )}
           </button>
         </div>
       </div>
 
       {/* Mobile Menu */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-orange-700 px-4 py-3 space-y-2">
-          {isAdmin ? (
-            // ADMIN MOBILE MENU
-            <>
-              <div className="border-b border-white/20 pb-2">
-                <p className="text-xs text-yellow-300 px-3 py-1 flex items-center gap-2">
-                  <ShieldCheckIcon className="h-4 w-4" />
-                  Admin Panel
-                </p>
-              </div>
-              {adminNavLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-white/90 hover:text-white py-2.5 px-3 rounded-lg hover:bg-white/10 transition flex items-center gap-3"
-                >
-                  {link.icon}
-                  {link.label}
-                </Link>
-              ))}
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left text-red-300 hover:text-red-200 py-2.5 px-3 rounded-lg hover:bg-white/10 transition mt-2"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            // USER MOBILE MENU
-            <>
-              {userNavLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="block text-white/90 hover:text-white py-2 px-3 rounded-lg hover:bg-white/10 transition"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              
-              <Link
-                to="/cart"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block text-white/90 hover:text-white py-2 px-3 rounded-lg hover:bg-white/10 transition"
-              >
-                Cart ({cartCount})
-              </Link>
-
-              <Link
-                to="/admin/login"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="block bg-yellow-500 text-gray-900 py-2 px-3 rounded-lg font-medium hover:bg-yellow-600 transition"
-              >
-                Admin Login
-              </Link>
-
-              {user ? (
-                <>
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+            className="md:hidden bg-gradient-to-b from-orange-700 to-orange-800 px-4 py-3 overflow-hidden border-t border-white/10 max-h-[80vh] overflow-y-auto"
+          >
+            {isAdmin ? (
+              // ADMIN MOBILE MENU
+              <div className="space-y-1">
+                <div className="px-3 py-2 mb-2 border-b border-white/10">
+                  <p className="text-xs text-yellow-300 font-medium flex items-center gap-2">
+                    <ShieldCheckIcon className="h-4 w-4" />
+                    Admin Panel
+                  </p>
+                </div>
+                {adminNavLinks.map((link) => (
                   <Link
-                    to="/profile"
+                    key={link.to}
+                    to={link.to}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-white/90 hover:text-white py-2 px-3 rounded-lg hover:bg-white/10 transition"
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all ${
+                      isActive(link.to) ? 'bg-white/20 text-white' : ''
+                    }`}
                   >
-                    Profile
+                    <span className="text-white/60">{link.icon}</span>
+                    {link.label}
+                    {isActive(link.to) && (
+                      <span className="ml-auto text-[10px] bg-white/20 px-2 py-0.5 rounded-full">Active</span>
+                    )}
                   </Link>
+                ))}
+                <div className="border-t border-white/10 mt-3 pt-3">
                   <button
                     onClick={handleLogout}
-                    className="block w-full text-left text-white/90 hover:text-white py-2 px-3 rounded-lg hover:bg-white/10 transition"
+                    className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-300 hover:text-red-200 hover:bg-white/10 transition-all"
                   >
+                    <ArrowRightOnRectangleIcon className="h-5 w-5" />
                     Logout
                   </button>
-                </>
-              ) : (
-                <>
+                </div>
+              </div>
+            ) : (
+              // USER MOBILE MENU
+              <div className="space-y-1">
+                {userNavLinks.map((link) => (
                   <Link
-                    to="/login"
+                    key={link.to}
+                    to={link.to}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="block text-white/90 hover:text-white py-2 px-3 rounded-lg hover:bg-white/10 transition"
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all ${
+                      isActive(link.to) ? 'bg-white/20 text-white' : ''
+                    }`}
                   >
-                    Login
+                    <span className="text-white/60">{link.icon}</span>
+                    {link.label}
+                    {isActive(link.to) && (
+                      <span className="ml-auto text-[10px] bg-white/20 px-2 py-0.5 rounded-full">Active</span>
+                    )}
                   </Link>
+                ))}
+                
+                <div className="border-t border-white/10 mt-3 pt-3">
                   <Link
-                    to="/register"
+                    to="/cart"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="block bg-white text-orange-600 py-2 px-3 rounded-lg font-medium hover:bg-orange-50 transition"
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all"
                   >
-                    Sign Up
+                    <ShoppingBagIcon className="h-5 w-5" />
+                    Cart
+                    {cartCount > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                        {cartCount}
+                      </span>
+                    )}
                   </Link>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </nav>
+
+                  <Link
+                    to="/admin/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 transition-all font-medium"
+                  >
+                    <ShieldCheckIcon className="h-5 w-5" />
+                    Admin Login
+                  </Link>
+
+                  {user ? (
+                    <>
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all"
+                      >
+                        <UserCircleIcon className="h-5 w-5" />
+                        Profile
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-300 hover:text-red-200 hover:bg-white/10 transition-all"
+                      >
+                        <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        to="/login"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all"
+                      >
+                        Login
+                      </Link>
+                      <Link
+                        to="/register"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white/20 text-white hover:bg-white/30 transition-all font-medium"
+                      >
+                        Sign Up
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 };
 
