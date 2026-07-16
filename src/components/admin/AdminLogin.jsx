@@ -96,9 +96,7 @@ const AdminLogin = () => {
             {loading ? "Logging in..." : "Login"}
           </button>
 
-          <p className="text-xs text-gray-400 text-center">
-            Default: admin@example.com / admin123
-          </p>
+          
         </form>
       </motion.div>
     </div>
