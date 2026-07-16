@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { motion } from 'framer-motion';
+import { useCart } from '../../context/CartContext';
 import api from '../../api/api';
 import toast from 'react-hot-toast';
 
@@ -72,6 +73,7 @@ const CheckoutForm = ({ orderData, orderId, totalAmount }) => {
   const [error, setError] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [cardComplete, setCardComplete] = useState(false);
+  const { clearCart } = useCart(); // ✅ Get clearCart function
 
   useEffect(() => {
     if (!stripeKey) {
@@ -156,7 +158,10 @@ const CheckoutForm = ({ orderData, orderId, totalAmount }) => {
         console.log('📦 Verify response:', verifyResponse.data);
 
         if (verifyResponse.data.success) {
-          localStorage.removeItem('cart');
+          // ✅ CLEAR CART HERE - IMPORTANT!
+          clearCart();
+          console.log('🗑️ Cart cleared successfully');
+          
           toast.success('🎉 Payment successful! Your order has been placed.');
           navigate(`/track/${orderData.orderNumber}`, { 
             state: { justPlaced: true } 

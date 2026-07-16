@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const Checkout = () => {
-  const { cart, cartTotal } = useCart();
+  const { cart, cartTotal, clearCart } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
@@ -22,6 +22,16 @@ const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState('stripe');
+
+  // ✅ Format phone number
+  const formatPhone = (phone) => {
+    if (!phone) return '';
+    let cleaned = phone.replace(/\s/g, '');
+    if (cleaned.startsWith('03')) {
+      cleaned = '+92' + cleaned.slice(1);
+    }
+    return cleaned;
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -45,8 +55,15 @@ const Checkout = () => {
     setError("");
 
     try {
+      // ✅ Format phone before sending
+      const formattedPhone = formatPhone(form.phone);
+      
       const payload = {
-        ...form,
+        customerName: form.customerName,
+        phone: formattedPhone,  // ✅ Send formatted phone
+        address: form.address,
+        orderType: form.orderType,
+        notes: form.notes,
         items: cart.map((i) => ({
           menuItem: i._id,
           name: i.name,
@@ -55,9 +72,12 @@ const Checkout = () => {
         })),
       };
       
-      console.log('📦 Creating order...', payload);
+      console.log('📦 Creating order with payload:', payload);
+      console.log('📱 Phone being sent:', formattedPhone);
+      
       const res = await api.post("/orders", payload);
       console.log('✅ Order created:', res.data);
+      console.log('📱 Phone saved in order:', res.data.phone);
       
       if (paymentMethod === 'stripe') {
         navigate('/payment', { 
@@ -71,8 +91,7 @@ const Checkout = () => {
           } 
         });
       } else {
-        // Cash on Delivery - clear cart
-        localStorage.removeItem('cart');
+        clearCart();
         toast.success('✅ Order placed successfully!');
         navigate(`/track/${res.data.orderNumber}`, { state: { justPlaced: true } });
       }
@@ -148,6 +167,7 @@ const Checkout = () => {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
               placeholder="03XX-XXXXXXX"
             />
+            <p className="text-xs text-gray-400 mt-1">Orders are linked to this phone number</p>
           </div>
 
           <div>

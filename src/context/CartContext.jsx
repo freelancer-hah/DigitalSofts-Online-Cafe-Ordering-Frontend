@@ -12,6 +12,7 @@ export const CartProvider = ({ children }) => {
 
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
+    console.log('🛒 Cart updated:', cart.length, 'items');
   }, [cart]);
 
   const addToCart = (item) => {
@@ -37,7 +38,12 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => {
+    console.log('🗑️ Clearing cart...');
+    setCart([]);
+    localStorage.removeItem('cart');
+    console.log('✅ Cart cleared');
+  };
 
   const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);

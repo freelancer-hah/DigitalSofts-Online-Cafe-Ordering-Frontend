@@ -4,9 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   UserIcon, 
-  MailIcon, 
-  PhoneIcon, 
-  LocationMarkerIcon, 
   ShoppingBagIcon,
   CurrencyRupeeIcon,
   ClockIcon,
@@ -41,6 +38,9 @@ const Profile = () => {
       return;
     }
     
+    console.log('👤 User data:', user);
+    console.log('📱 User phone:', user?.phone);
+    
     setFormData({
       name: user.name || '',
       phone: user.phone || '',
@@ -53,22 +53,29 @@ const Profile = () => {
   const fetchUserOrders = async () => {
     setOrdersLoading(true);
     try {
-      const phone = user?.phone || '';
-      console.log('📋 Fetching orders for phone:', phone);
+      let phone = user?.phone || '';
+      console.log('📋 Raw phone from user:', phone);
       
       if (!phone) {
-        console.log('⚠️ No phone number found');
+        console.log('⚠️ No phone number found for user');
         setOrders([]);
         setOrdersLoading(false);
         return;
       }
       
-      const res = await api.get(`/orders/track/all?phone=${phone}`);
+      // ✅ Clean phone for search (remove +)
+      const cleanPhone = phone.replace(/\+/g, '').replace(/\s/g, '');
+      console.log('📋 Clean phone for search:', cleanPhone);
+      
+      // ✅ Try the API with clean phone
+      const res = await api.get(`/orders/track/all?phone=${cleanPhone}`);
       console.log('📋 Orders found:', res.data?.length || 0);
+      console.log('📋 Orders data:', res.data);
       
       const userOrders = res.data || [];
       setOrders(userOrders);
       
+      // Calculate stats
       const total = userOrders.length;
       const spent = userOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
       const pending = userOrders.filter(o => o.status !== 'Completed' && o.status !== 'Cancelled').length;
@@ -80,6 +87,8 @@ const Profile = () => {
         pendingOrders: pending,
         completedOrders: completed
       });
+      
+      console.log('📊 Stats calculated:', { total, spent, pending, completed });
     } catch (error) {
       console.error('❌ Failed to fetch orders:', error);
       setOrders([]);
@@ -138,7 +147,7 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 pt-20">
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <div>
@@ -158,6 +167,7 @@ const Profile = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Profile Info */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -170,6 +180,7 @@ const Profile = () => {
                 </div>
                 <h2 className="text-lg font-semibold mt-3">{user.name}</h2>
                 <p className="text-sm text-gray-500">{user.email}</p>
+                <p className="text-sm text-gray-400 mt-1">📱 {user.phone || 'No phone'}</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -185,16 +196,6 @@ const Profile = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={user.email}
-                    disabled
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 cursor-not-allowed"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
-                </div>
-                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                   <input
                     type="tel"
@@ -204,6 +205,7 @@ const Profile = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent transition"
                     placeholder="03XX-XXXXXXX"
                   />
+                  <p className="text-xs text-gray-400 mt-1">Orders are linked to this phone number</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Address</label>
@@ -227,11 +229,13 @@ const Profile = () => {
             </div>
           </motion.div>
 
+          {/* Orders Section */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-2 space-y-6"
           >
+            {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
                 <p className="text-sm text-gray-500">Total Orders</p>
@@ -251,6 +255,7 @@ const Profile = () => {
               </div>
             </div>
 
+            {/* Orders List */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="text-lg font-semibold">📦 Recent Orders</h2>
@@ -279,7 +284,7 @@ const Profile = () => {
                     <div key={order._id} className="p-4 hover:bg-gray-50 transition">
                       <div className="flex flex-wrap justify-between items-start gap-2">
                         <div className="flex-1 min-w-[150px]">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-sm">{order.orderNumber}</p>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex items-center gap-1 ${getStatusBadge(order.status)}`}>
                               {getStatusIcon(order.status)}
@@ -295,6 +300,7 @@ const Profile = () => {
                             {' • '}
                             {order.items?.length || 0} items
                           </p>
+                          <p className="text-xs text-gray-400">📱 {order.phone}</p>
                           {order.notes && (
                             <p className="text-xs text-gray-400 italic mt-1">Note: {order.notes}</p>
                           )}
