@@ -4,7 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({ 
   baseURL: API_URL,
-  timeout: 30000, // 30 seconds timeout
+  timeout: 60000, // ✅ Increased to 60 seconds for Render
   headers: {
     'Content-Type': 'application/json',
   }
@@ -16,14 +16,12 @@ api.interceptors.request.use(
     const token = localStorage.getItem("token");
     const adminToken = localStorage.getItem("adminToken");
     
-    // Priority: admin token > user token
     if (adminToken) {
       config.headers.Authorization = `Bearer ${adminToken}`;
     } else if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Log request in development
     if (import.meta.env.DEV) {
       console.log(`📡 ${config.method?.toUpperCase()} ${config.url}`);
     }
@@ -39,7 +37,6 @@ api.interceptors.request.use(
 // Response interceptor - Handle errors
 api.interceptors.response.use(
   (response) => {
-    // Log response in development
     if (import.meta.env.DEV) {
       console.log(`✅ ${response.config.url}`, response.status);
     }
@@ -48,16 +45,12 @@ api.interceptors.response.use(
   (error) => {
     console.error('❌ API Error:', error.response?.status, error.response?.data?.message || error.message);
     
-    // Handle specific status codes
     if (error.response?.status === 401) {
-      // Unauthorized - Clear all tokens and redirect
       localStorage.removeItem("token");
       localStorage.removeItem("adminToken");
       localStorage.removeItem("user");
       localStorage.removeItem("adminUsername");
-      localStorage.removeItem("adminToken");
       
-      // Redirect based on current path
       const currentPath = window.location.pathname;
       if (currentPath.includes('/admin')) {
         window.location.href = "/admin/login";
@@ -67,7 +60,6 @@ api.interceptors.response.use(
     }
     
     if (error.response?.status === 403) {
-      // Forbidden - Show message and redirect
       console.error('Access forbidden. You do not have permission.');
       if (window.location.pathname.includes('/admin')) {
         window.location.href = "/admin/login";
@@ -82,8 +74,7 @@ api.interceptors.response.use(
       console.error('Server error. Please try again later.');
     }
     
-    // Network errors
-    if (error.code === 'ECONNABORTED') {
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
       console.error('Request timeout. Please check your connection.');
     }
     
@@ -97,18 +88,15 @@ api.interceptors.response.use(
 
 // Helper methods for common API calls
 export const apiHelpers = {
-  // Auth
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
   adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
   
-  // Menu
   getMenu: () => api.get('/menu'),
   addMenuItem: (data) => api.post('/menu', data),
   updateMenuItem: (id, data) => api.put(`/menu/${id}`, data),
   deleteMenuItem: (id) => api.delete(`/menu/${id}`),
   
-  // Orders
   createOrder: (data) => api.post('/orders', data),
   getOrders: () => api.get('/orders'),
   getOrderByNumber: (orderNumber, phone) => 
@@ -119,18 +107,15 @@ export const apiHelpers = {
   markOrderAsPaid: (id, paymentId) => 
     api.post(`/orders/${id}/mark-paid`, { paymentId }),
   
-  // Admin
   getDashboardStats: () => api.get('/admin/stats/dashboard'),
   getSalesStats: () => api.get('/admin/stats/sales'),
   getRecentOrders: () => api.get('/admin/orders/recent'),
   
-  // Users
   getUsers: () => api.get('/users'),
   createStaff: (data) => api.post('/users/staff', data),
   deleteUser: (id) => api.delete(`/users/${id}`),
   updateUser: (id, data) => api.put(`/users/${id}`, data),
   
-  // Payments
   createPaymentIntent: (data) => api.post('/payments/create-intent', data),
   verifyPayment: (data) => api.post('/payments/verify', data),
 };
