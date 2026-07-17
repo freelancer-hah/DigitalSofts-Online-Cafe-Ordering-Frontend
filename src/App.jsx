@@ -6,6 +6,7 @@ import { CartProvider } from './context/CartContext';
 import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
+import VoiceOrdering from './components/VoiceOrdering/VoiceOrdering';
 
 // Pages
 import Home from './components/pages/Home';
@@ -29,6 +30,25 @@ import MenuManagement from './components/admin/MenuManagement';
 import OrderManagement from './components/admin/OrderManagement';
 import UsersManagement from './components/admin/UsersManagement';
 
+// Protected Route Component
+const ProtectedRoute = ({ children, adminOnly = false }) => {
+  const token = localStorage.getItem('token');
+  const adminToken = localStorage.getItem('adminToken');
+  
+  if (adminOnly) {
+    if (!adminToken) {
+      return <Navigate to="/admin/login" replace />;
+    }
+    return children;
+  }
+  
+  if (!token && !adminToken) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
 const App = () => {
   return (
     <AuthProvider>
@@ -49,22 +69,77 @@ const App = () => {
                 <Route path="/track/:orderNumber?" element={<OrderTracking />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/orders" element={<Orders />} />
+                
+                {/* Protected Routes */}
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/orders" element={
+                  <ProtectedRoute>
+                    <Orders />
+                  </ProtectedRoute>
+                } />
 
                 {/* Admin Routes */}
                 <Route path="/admin/login" element={<AdminLogin />} />
-                <Route path="/admin/dashboard" element={<AdminDashboard />} />
-                <Route path="/admin/kitchen" element={<KitchenBoard />} />
-                <Route path="/admin/menu" element={<MenuManagement />} />
-                <Route path="/admin/orders" element={<OrderManagement />} />
-                <Route path="/admin/users" element={<UsersManagement />} />
+                <Route path="/admin/dashboard" element={
+                  <ProtectedRoute adminOnly={true}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/kitchen" element={
+                  <ProtectedRoute adminOnly={true}>
+                    <KitchenBoard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/menu" element={
+                  <ProtectedRoute adminOnly={true}>
+                    <MenuManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/orders" element={
+                  <ProtectedRoute adminOnly={true}>
+                    <OrderManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute adminOnly={true}>
+                    <UsersManagement />
+                  </ProtectedRoute>
+                } />
 
-                <Route path="*" element={<Navigate to="/" />} />
+                {/* 404 */}
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
             <Footer />
-            <Toaster position="top-right" />
+            <VoiceOrdering />
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                duration: 3000,
+                style: {
+                  background: '#363636',
+                  color: '#fff',
+                },
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: '#4ade80',
+                    secondary: '#fff',
+                  },
+                },
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: '#ef4444',
+                    secondary: '#fff',
+                  },
+                },
+              }}
+            />
           </div>
         </SocketProvider>
       </CartProvider>

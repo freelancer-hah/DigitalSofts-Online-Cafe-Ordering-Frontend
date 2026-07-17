@@ -304,6 +304,10 @@ const Home = () => {
         </div>
       </section>
 
+      
+
+
+
       {/* Stats Section */}
       <section className="py-12 bg-gradient-to-b from-orange-50 to-white relative -mt-1">
         <div className="max-w-7xl mx-auto px-4">

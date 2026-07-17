@@ -15,6 +15,7 @@ const Checkout = () => {
   const [form, setForm] = useState({
     customerName: user?.name || "",
     phone: user?.phone || "",
+    email: user?.email || "", // ✅ Add email field
     address: user?.address || "",
     orderType: "Pickup",
     notes: "",
@@ -23,7 +24,7 @@ const Checkout = () => {
   const [error, setError] = useState("");
   const [paymentMethod, setPaymentMethod] = useState('stripe');
 
-  // ✅ Format phone number
+  // Format phone number
   const formatPhone = (phone) => {
     if (!phone) return '';
     let cleaned = phone.replace(/\s/g, '');
@@ -55,12 +56,12 @@ const Checkout = () => {
     setError("");
 
     try {
-      // ✅ Format phone before sending
       const formattedPhone = formatPhone(form.phone);
       
       const payload = {
         customerName: form.customerName,
-        phone: formattedPhone,  // ✅ Send formatted phone
+        phone: formattedPhone,
+        email: form.email, // ✅ Include email
         address: form.address,
         orderType: form.orderType,
         notes: form.notes,
@@ -72,12 +73,16 @@ const Checkout = () => {
         })),
       };
       
-      console.log('📦 Creating order with payload:', payload);
-      console.log('📱 Phone being sent:', formattedPhone);
+      console.log('📦 Creating order with email:', form.email);
+      console.log('📦 Payload:', payload);
       
       const res = await api.post("/orders", payload);
       console.log('✅ Order created:', res.data);
-      console.log('📱 Phone saved in order:', res.data.phone);
+      
+      // ✅ Show email confirmation toast
+      if (form.email) {
+        toast.success(`📧 Confirmation email sent to ${form.email}`);
+      }
       
       if (paymentMethod === 'stripe') {
         navigate('/payment', { 
@@ -92,7 +97,7 @@ const Checkout = () => {
         });
       } else {
         clearCart();
-        toast.success('✅ Order placed successfully!');
+        toast.success('✅ Order placed successfully! Check your email for confirmation.');
         navigate(`/track/${res.data.orderNumber}`, { state: { justPlaced: true } });
       }
     } catch (err) {
@@ -154,6 +159,20 @@ const Checkout = () => {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
               placeholder="Your name"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Email Address *</label>
+            <input
+              required
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              placeholder="you@example.com"
+            />
+            <p className="text-xs text-gray-400 mt-1">We'll send order confirmation and updates to this email</p>
           </div>
 
           <div>
