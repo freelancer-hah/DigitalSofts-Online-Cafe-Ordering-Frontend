@@ -7,6 +7,8 @@ import { SocketProvider } from './context/SocketContext';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
 import VoiceOrdering from './components/VoiceOrdering/VoiceOrdering';
+import VisionOrder from './components/Vision/VisionOrder';
+
 
 // Pages
 import Home from './components/pages/Home';
@@ -116,6 +118,7 @@ const App = () => {
             </main>
             <Footer />
             <VoiceOrdering />
+            <VisionOrder />
             <Toaster 
               position="top-right"
               toastOptions={{

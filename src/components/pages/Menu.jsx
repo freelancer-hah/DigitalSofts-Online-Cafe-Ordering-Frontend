@@ -13,7 +13,7 @@ import {
   XIcon
 } from '@heroicons/react/outline';
 import toast from 'react-hot-toast';
-
+import Recommendations from '../Recommendations/Recommendations';
 const CATEGORY_ORDER = ["All", "Starters", "Main Course", "Fast Food", "Beverages", "Desserts"];
 
 // Category Images
@@ -318,6 +318,10 @@ const Menu = () => {
                       </button>
                     )}
                   </div>
+
+
+
+
 
                   {/* Content Section */}
                   <div className="p-4">

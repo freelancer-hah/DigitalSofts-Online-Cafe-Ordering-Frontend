@@ -16,6 +16,7 @@ import {
 import { useCart } from '../../context/CartContext';
 import api from '../../api/api';
 import toast from 'react-hot-toast';
+import Recommendations from '../Recommendations/Recommendations';
 
 const Home = () => {
   const { addToCart } = useCart();
@@ -305,7 +306,10 @@ const Home = () => {
       </section>
 
       
-
+{/* Recommendations Section */}
+<div className="max-w-7xl mx-auto px-4">
+  <Recommendations />
+</div>
 
 
       {/* Stats Section */}

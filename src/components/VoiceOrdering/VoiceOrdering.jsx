@@ -1,15 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from '../../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaMicrophone, 
   FaStop,
   FaTimes,
-  FaShoppingBag,
   FaVolumeUp,
-  FaTrash
+  FaSpinner
 } from 'react-icons/fa';
-import { MdMenu, MdShoppingCart } from 'react-icons/md';
 import toast from 'react-hot-toast';
 import api from '../../api/api';
 
@@ -25,23 +23,27 @@ const VoiceOrdering = () => {
   const [showPanel, setShowPanel] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [isSupported, setIsSupported] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isMenuLoaded, setIsMenuLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const autoAddTimeout = useRef(null);
 
-  // Check if speech recognition is supported
-  useEffect(() => {
-    if (!SpeechRecognition) {
-      setIsSupported(false);
-      console.warn('Speech recognition not supported in this browser');
-    }
-  }, []);
-
-  // Fetch menu items
+  // Fetch menu items on mount
   useEffect(() => {
     const fetchMenu = async () => {
       try {
+        setIsLoading(true);
+        console.log('🔄 Fetching menu...');
         const res = await api.get('/menu');
         setMenuItems(res.data);
+        setIsMenuLoaded(true);
+        setIsLoading(false);
+        console.log('✅ Menu loaded:', res.data.map(i => i.name));
       } catch (error) {
-        console.error('Error fetching menu:', error);
+        console.error('❌ Error fetching menu:', error);
+        setIsLoading(false);
+        toast.error('Failed to load menu. Please refresh.');
       }
     };
     fetchMenu();
@@ -49,50 +51,63 @@ const VoiceOrdering = () => {
 
   // Setup speech recognition
   useEffect(() => {
-    if (!isSupported) return;
+    if (!isMenuLoaded || menuItems.length === 0) {
+      console.log('⏳ Waiting for menu to load...');
+      return;
+    }
+
+    if (!SpeechRecognition) {
+      setIsSupported(false);
+      toast.error('Voice recognition not supported. Please use Chrome.');
+      return;
+    }
+
+    console.log('🎤 Setting up speech recognition...');
 
     const recognitionInstance = new SpeechRecognition();
     recognitionInstance.continuous = true;
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
+    recognitionInstance.maxAlternatives = 10;
 
     recognitionInstance.onresult = (event) => {
       let finalTranscript = '';
       let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
+        const transcriptText = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += transcript;
+          finalTranscript += transcriptText;
         } else {
-          interimTranscript += transcript;
+          interimTranscript += transcriptText;
         }
       }
 
       const fullText = finalTranscript || interimTranscript;
       setTranscript(fullText);
+      console.log('🎤 Heard:', fullText);
 
-      if (finalTranscript) {
-        detectItemsFromSpeech(finalTranscript);
+      if (finalTranscript && finalTranscript.length > 3) {
+        if (autoAddTimeout.current) {
+          clearTimeout(autoAddTimeout.current);
+        }
+        
+        autoAddTimeout.current = setTimeout(() => {
+          detectAndAddItems(finalTranscript);
+        }, 1500);
       }
     };
 
     recognitionInstance.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
+      console.error('Speech error:', event.error);
       if (event.error === 'not-allowed') {
         toast.error('Please allow microphone access');
       }
       setIsListening(false);
-      if (detectedItems.length === 0) {
-        setShowPanel(false);
-      }
     };
 
     recognitionInstance.onend = () => {
       setIsListening(false);
-      if (detectedItems.length === 0 && !transcript) {
-        setShowPanel(false);
-      }
     };
 
     setRecognition(recognitionInstance);
@@ -101,44 +116,136 @@ const VoiceOrdering = () => {
       if (recognitionInstance) {
         recognitionInstance.stop();
       }
+      if (autoAddTimeout.current) {
+        clearTimeout(autoAddTimeout.current);
+      }
     };
-  }, [isSupported]);
+  }, [isMenuLoaded, menuItems]);
 
-  // Detect items from speech
-  const detectItemsFromSpeech = (text) => {
+  // Detect AND Add items automatically
+  const detectAndAddItems = (text) => {
+    if (isProcessing) return;
+    if (!text || text.trim().length === 0) return;
+    
+    if (!isMenuLoaded || menuItems.length === 0) {
+      toast.error('Menu is still loading. Please try again in a moment.');
+      return;
+    }
+
+    setIsProcessing(true);
     const detected = [];
-    const lowerText = text.toLowerCase();
     const addedNames = new Set();
+    const lowerText = text.toLowerCase().trim();
+    
+    console.log('🔍 Searching in menu:', menuItems.map(i => i.name));
+    console.log('🎤 Text:', lowerText);
 
+    // Extract quantity from text
+    const extractQuantity = (text) => {
+      const matches = text.match(/\b(\d+)\s*(?:x\s*)?/g);
+      if (matches) {
+        const nums = matches.map(m => parseInt(m.replace(/[^0-9]/g, ''))).filter(n => n > 0 && n <= 20);
+        return nums.length > 0 ? nums[0] : 1;
+      }
+      return 1;
+    };
+
+    // SMART DETECTION
     menuItems.forEach(item => {
-      const name = item.name.toLowerCase();
-      const words = name.split(' ');
+      const itemName = item.name.toLowerCase();
+      const words = itemName.split(' ');
       
-      const matched = words.some(word => 
-        lowerText.includes(word) && word.length > 2
-      );
-
-      if (matched && !addedNames.has(item.name)) {
+      // Strategy 1: Exact match
+      if (lowerText.includes(itemName) && !addedNames.has(item.name)) {
+        const qty = extractQuantity(lowerText);
+        detected.push({ ...item, quantity: qty });
         addedNames.add(item.name);
-        detected.push({ ...item, quantity: 1 });
+        console.log(`✅ Exact match: ${item.name} x${qty}`);
+        return;
+      }
+      
+      // Strategy 2: Word-by-word (for multi-word items)
+      if (words.length > 1) {
+        let matchedCount = 0;
+        words.forEach(word => {
+          if (word.length > 2 && lowerText.includes(word)) matchedCount++;
+        });
+        if (matchedCount >= words.length * 0.5 && !addedNames.has(item.name)) {
+          const qty = extractQuantity(lowerText);
+          detected.push({ ...item, quantity: qty });
+          addedNames.add(item.name);
+          console.log(`✅ Partial match: ${item.name} x${qty}`);
+        }
+      }
+      
+      // Strategy 3: Single word match
+      if (words.length === 1 && words[0].length > 2 && !addedNames.has(item.name)) {
+        const regex = new RegExp(`\\b${words[0]}\\b`, 'i');
+        if (regex.test(lowerText)) {
+          const qty = extractQuantity(lowerText);
+          detected.push({ ...item, quantity: qty });
+          addedNames.add(item.name);
+          console.log(`✅ Single word match: ${item.name} x${qty}`);
+        }
       }
     });
 
-    const numberMatches = text.match(/\d+/g);
-    if (numberMatches && detected.length > 0) {
-      detected[0].quantity = parseInt(numberMatches[0]) || 1;
+    // Fuzzy search if no match
+    if (detected.length === 0) {
+      menuItems.forEach(item => {
+        const itemName = item.name.toLowerCase();
+        const words = itemName.split(' ');
+        const matched = words.some(word => word.length > 2 && lowerText.includes(word));
+        if (matched && !addedNames.has(item.name)) {
+          const qty = extractQuantity(lowerText);
+          detected.push({ ...item, quantity: qty });
+          addedNames.add(item.name);
+          console.log(`✅ Fuzzy match: ${item.name} x${qty}`);
+        }
+      });
     }
 
-    setDetectedItems(detected);
+    console.log('📊 Detected:', detected);
+
+    // AUTO-ADD items to cart
     if (detected.length > 0) {
+      detected.forEach(item => {
+        const qty = item.quantity || 1;
+        for (let i = 0; i < qty; i++) {
+          addToCart(item);
+        }
+      });
+      
+      const itemNames = detected.map(i => `${i.quantity || 1}x ${i.name}`).join(', ');
+      toast.success(`🛒 Added ${itemNames} to cart!`);
+      
+      setDetectedItems(detected);
+      setShowPanel(true);
+      
+      setTimeout(() => {
+        setShowPanel(false);
+        setDetectedItems([]);
+        setTranscript('');
+      }, 4000);
+      
+    } else {
+      const suggestions = menuItems.slice(0, 5).map(i => i.name).join(', ');
+      toast.error(`❌ Could not find "${text}". Try: ${suggestions}`);
       setShowPanel(true);
     }
+    
+    setIsProcessing(false);
   };
 
   // Start listening
   const startListening = () => {
     if (!isSupported) {
-      toast.error('Voice recognition not supported in this browser');
+      toast.error('Voice recognition not supported. Please use Chrome.');
+      return;
+    }
+
+    if (!isMenuLoaded || menuItems.length === 0) {
+      toast.error('⏳ Menu is loading... Please wait a moment.');
       return;
     }
 
@@ -155,7 +262,7 @@ const VoiceOrdering = () => {
       setDetectedItems([]);
       toast.success('🎤 Listening... Speak your order', { duration: 2000 });
     } catch (error) {
-      console.error('Error starting recognition:', error);
+      console.error('Error starting:', error);
       toast.error('Failed to start voice recognition');
     }
   };
@@ -166,98 +273,69 @@ const VoiceOrdering = () => {
       try {
         recognition.stop();
       } catch (error) {
-        console.error('Error stopping recognition:', error);
+        console.error('Error stopping:', error);
       }
     }
     setIsListening(false);
-  };
-
-  // Add detected item to cart
-  const addDetectedToCart = (item) => {
-    const quantity = item.quantity || 1;
-    for (let i = 0; i < quantity; i++) {
-      addToCart(item);
-    }
-    toast.success(`✅ Added ${quantity}x ${item.name} to cart!`);
-    setDetectedItems(prev => prev.filter(i => i._id !== item._id));
-    if (detectedItems.length === 1) {
-      setShowPanel(false);
+    if (autoAddTimeout.current) {
+      clearTimeout(autoAddTimeout.current);
     }
   };
 
-  // Add all detected items
-  const addAllToCart = () => {
-    detectedItems.forEach(item => {
-      const quantity = item.quantity || 1;
-      for (let i = 0; i < quantity; i++) {
-        addToCart(item);
-      }
-    });
-    toast.success(`✅ Added ${detectedItems.length} items to cart!`);
-    setDetectedItems([]);
-    setShowPanel(false);
-    setTranscript('');
-  };
-
-  // Clear detected
   const clearDetected = () => {
     setDetectedItems([]);
     setShowPanel(false);
     setTranscript('');
   };
 
-  // Quick commands
   const quickCommands = [
-    { 
-      text: '📋 Menu', 
-      action: () => { window.location.href = '/menu'; } 
-    },
-    { 
-      text: '🛒 Cart', 
-      action: () => { window.location.href = '/cart'; } 
-    },
-    { 
-      text: '🗑️ Clear Cart', 
-      action: () => { 
-        clearCart();
-        toast.success('Cart cleared');
-      } 
-    },
+    { text: '📋 Menu', action: () => { window.location.href = '/menu'; } },
+    { text: '🛒 Cart', action: () => { window.location.href = '/cart'; } },
+    { text: '🗑️ Clear', action: () => { clearCart(); toast.success('Cart cleared'); } },
   ];
 
-  // If not supported, show nothing
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="fixed bottom-24 right-4 z-50">
+        <button className="p-4 rounded-full shadow-2xl bg-gray-400 text-white cursor-not-allowed" disabled>
+          <FaSpinner className="h-8 w-8 animate-spin" />
+        </button>
+        <div className="absolute bottom-20 right-0 w-64 bg-white rounded-2xl shadow-2xl p-3 text-center">
+          <p className="text-xs text-gray-500">⏳ Loading menu...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isSupported) {
-    return null;
+    return (
+      <div className="fixed bottom-24 right-4 z-50">
+        <button className="p-4 rounded-full shadow-2xl bg-gray-400 text-white cursor-not-allowed" disabled>
+          <FaMicrophone className="h-8 w-8" />
+        </button>
+        <div className="absolute bottom-20 right-0 w-80 bg-white rounded-2xl shadow-2xl p-4 text-center">
+          <p className="text-sm text-gray-600">⚠️ Voice not supported.<br/><span className="text-xs text-gray-400">Use Chrome</span></p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="fixed bottom-24 right-4 z-50">
-      {/* Voice Button */}
+      {/* Voice Button - WITHOUT CART BADGE */}
       <motion.button
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={isListening ? stopListening : startListening}
         className={`p-4 rounded-full shadow-2xl transition-all duration-300 ${
-          isListening 
-            ? 'bg-red-500 voice-pulse' 
-            : 'bg-gradient-to-r from-orange-500 to-orange-600'
+          isListening ? 'bg-red-500 voice-pulse' : 'bg-gradient-to-r from-orange-500 to-orange-600'
         } text-white relative`}
       >
-        {isListening ? (
-          <FaStop className="h-8 w-8" />
-        ) : (
-          <FaMicrophone className="h-8 w-8" />
-        )}
-        
-        {/* Cart badge */}
-        {cart.length > 0 && !isListening && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-            {cart.length}
-          </span>
-        )}
+        {isListening ? <FaStop className="h-8 w-8" /> : <FaMicrophone className="h-8 w-8" />}
+        {/* ❌ CART BADGE REMOVED - No number on voice button */}
       </motion.button>
 
-      {/* Status indicator */}
       {isListening && (
         <div className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-3 py-1 rounded-full whitespace-nowrap animate-pulse">
           🎤 Listening...
@@ -273,29 +351,20 @@ const VoiceOrdering = () => {
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[80vh]"
           >
-            {/* Header */}
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
-                <FaVolumeUp className="h-5 w-5" />
+                {isProcessing ? <FaSpinner className="h-5 w-5 animate-spin" /> : <FaVolumeUp className="h-5 w-5" />}
                 <span className="font-semibold">Voice Order</span>
-                {isListening && (
-                  <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full animate-pulse">
-                    Live
-                  </span>
-                )}
+                {isListening && <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full animate-pulse">Live</span>}
               </div>
-              <button
-                onClick={clearDetected}
-                className="text-white/80 hover:text-white transition"
-              >
+              <button onClick={clearDetected} className="text-white/80 hover:text-white transition">
                 <FaTimes className="h-5 w-5" />
               </button>
             </div>
 
-            {/* Transcript */}
             <div className="p-4 bg-gray-50 border-b border-gray-100 min-h-[60px]">
               <p className="text-sm text-gray-600">
-                {transcript || 'Say something like: "I want Chicken Karahi"'}
+                {transcript || `Say: "2 Chicken Karahi" or "I want ${menuItems[0]?.name || 'Biryani'}"`}
               </p>
               {isListening && (
                 <div className="flex items-center gap-2 mt-1">
@@ -305,68 +374,33 @@ const VoiceOrdering = () => {
               )}
             </div>
 
-            {/* Detected Items */}
             {detectedItems.length > 0 && (
               <div className="p-3 max-h-48 overflow-y-auto">
-                <p className="text-xs font-medium text-gray-500 mb-2">🛒 Detected Items:</p>
+                <p className="text-xs font-medium text-gray-500 mb-2">✅ Detected & Added:</p>
                 {detectedItems.map((item) => (
-                  <motion.div
-                    key={item._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center justify-between bg-orange-50 rounded-lg p-3 mb-2 border border-orange-200"
-                  >
+                  <div key={item._id} className="flex items-center justify-between bg-green-50 rounded-lg p-3 mb-2 border border-green-200">
                     <div>
-                      <p className="font-medium text-sm">{item.name}</p>
-                      <p className="text-xs text-gray-500">Rs {item.price}</p>
+                      <p className="font-medium text-sm text-green-700">{item.name}</p>
+                      <p className="text-xs text-gray-500">Rs {item.price} × {item.quantity || 1}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {item.quantity && item.quantity > 1 && (
-                        <span className="text-xs bg-orange-100 px-2 py-0.5 rounded-full">
-                          ×{item.quantity}
-                        </span>
-                      )}
-                      <button
-                        onClick={() => addDetectedToCart(item)}
-                        className="bg-orange-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-orange-600 transition"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </motion.div>
+                    <span className="text-green-600 font-bold">✓ Added</span>
+                  </div>
                 ))}
-
-                {/* Add All Button */}
-                {detectedItems.length > 1 && (
-                  <button
-                    onClick={addAllToCart}
-                    className="w-full bg-green-500 text-white py-2 rounded-lg text-sm hover:bg-green-600 transition mt-2"
-                  >
-                    🛒 Add All ({detectedItems.length} items)
-                  </button>
-                )}
               </div>
             )}
 
-            {/* Quick Commands */}
             <div className="p-3 border-t border-gray-100 bg-gray-50">
-              <p className="text-xs text-gray-500 mb-2">💡 Quick Actions:</p>
+              <p className="text-xs text-gray-500 mb-2">💡 Just speak naturally:</p>
               <div className="flex flex-wrap gap-2">
                 {quickCommands.map((cmd, idx) => (
-                  <button
-                    key={idx}
-                    onClick={cmd.action}
-                    className="text-xs bg-white border border-gray-200 px-3 py-1 rounded-full hover:bg-orange-50 hover:border-orange-300 transition"
-                  >
+                  <button key={idx} onClick={cmd.action} className="text-xs bg-white border border-gray-200 px-3 py-1 rounded-full hover:bg-orange-50 hover:border-orange-300 transition">
                     {cmd.text}
                   </button>
                 ))}
               </div>
-              {menuItems.length > 0 && (
-                <p className="text-xs text-gray-400 mt-2">
-                  Try: "I want {menuItems.slice(0, 2).map(i => i.name).join(' and ')}"
-                </p>
-              )}
+              <div className="mt-2 text-xs text-gray-400">
+                Try: "2 {menuItems[0]?.name || 'Chicken Karahi'}" or "I want {menuItems[1]?.name || 'Biryani'}"
+              </div>
             </div>
           </motion.div>
         )}
