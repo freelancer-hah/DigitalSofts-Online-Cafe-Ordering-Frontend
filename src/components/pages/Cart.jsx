@@ -1,12 +1,75 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext.jsx";
 import { TrashIcon, PlusIcon, MinusIcon, ShoppingBagIcon } from '@heroicons/react/outline';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
+import api from '../../api/api';
 
 const Cart = () => {
   const { cart, updateQuantity, removeFromCart, cartTotal } = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // ✅ Save cart to backend for abandoned cart recovery
+  useEffect(() => {
+    const saveCart = async () => {
+      if (cart.length === 0) return;
+
+      try {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        await api.post('/cart/save', {
+          items: cart.map(item => ({
+            menuItem: item._id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
+          })),
+          totalAmount: total,
+          customerName: user?.name || '',
+          customerEmail: user?.email || '',
+          customerPhone: user?.phone || ''
+        });
+
+        console.log('💾 Cart saved for recovery');
+      } catch (error) {
+        console.error('❌ Failed to save cart:', error);
+      }
+    };
+
+    // Save cart when items change
+    if (cart.length > 0) {
+      saveCart();
+    }
+
+    // Save cart when user leaves the page
+    const handleBeforeUnload = () => {
+      if (cart.length > 0) {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const data = JSON.stringify({
+          items: cart.map(item => ({
+            menuItem: item._id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity
+          })),
+          totalAmount: total,
+          customerName: user?.name || '',
+          customerEmail: user?.email || '',
+          customerPhone: user?.phone || ''
+        });
+
+        navigator.sendBeacon('/api/cart/save', new Blob([data], { type: 'application/json' }));
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [cart, user]);
 
   if (cart.length === 0) {
     return (

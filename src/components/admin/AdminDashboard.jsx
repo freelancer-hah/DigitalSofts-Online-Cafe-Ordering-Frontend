@@ -10,9 +10,12 @@ import {
   CurrencyRupeeIcon,
   ClipboardListIcon,
   CheckCircleIcon,
-  ClockIcon
+  ClockIcon,
+  ChartBarIcon
 } from '@heroicons/react/outline';
 import toast from 'react-hot-toast';
+import ForecastDashboard from './ForecastDashboard';
+import AbandonedCarts from './AbandonedCarts'; // ✅ ADD THIS
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -25,6 +28,7 @@ const AdminDashboard = () => {
     recentOrders: []
   });
   const [loading, setLoading] = useState(true);
+  const [showForecast, setShowForecast] = useState(false);
   const navigate = useNavigate();
   const { logout } = useAuth();
   const socket = useSocket();
@@ -145,6 +149,13 @@ const AdminDashboard = () => {
               📋 Menu
             </button>
             <button
+              onClick={() => setShowForecast(!showForecast)}
+              className="bg-purple-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-purple-600 transition text-sm flex-1 sm:flex-none text-center flex items-center justify-center gap-1"
+            >
+              <ChartBarIcon className="h-4 w-4" />
+              {showForecast ? 'Hide Forecast' : 'AI Forecast'}
+            </button>
+            <button
               onClick={handleLogout}
               className="bg-red-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-red-600 transition text-sm flex-1 sm:flex-none text-center"
             >
@@ -174,6 +185,32 @@ const AdminDashboard = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+
+        {/* AI Sales Forecast Section */}
+        {showForecast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-6"
+          >
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <ChartBarIcon className="h-5 w-5 text-purple-500" />
+                  AI Sales Forecast
+                </h3>
+                <span className="text-xs text-gray-400">Powered by AI</span>
+              </div>
+              <ForecastDashboard />
+            </div>
+          </motion.div>
+        )}
+
+        {/* ✅ Abandoned Carts Section */}
+        <div className="mt-6">
+          <AbandonedCarts />
         </div>
 
         {/* Recent Orders - Mobile Friendly Table */}
