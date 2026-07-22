@@ -1,16 +1,25 @@
-import React, { useEffect, useState } from 'react';
+// frontend/src/components/pages/OrderTracking.jsx
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/api';
 import { io } from 'socket.io-client';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix marker icons
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
-// ✅ Kitchen steps (Completed ko hata diya — ab isko end mein daalenge)
 const KITCHEN_STEPS = ['Pending', 'Preparing', 'Ready'];
-
-// ✅ Delivery steps map (backend keys ke saath)
 const DELIVERY_STEP_MAP = [
   { key: 'assigned', label: 'Assigned' },
   { key: 'accepted', label: 'Accepted' },
@@ -18,8 +27,6 @@ const DELIVERY_STEP_MAP = [
   { key: 'on_way', label: 'On The Way' },
   { key: 'delivered', label: 'Delivered' },
 ];
-
-// ✅ Full status list for order completion check
 const ORDER_STATUS_LIST = ['Pending', 'Preparing', 'Ready', 'Completed'];
 
 const OrderTracking = () => {
@@ -31,24 +38,30 @@ const OrderTracking = () => {
   const [phoneInput, setPhoneInput] = useState('');
   const [order, setOrder] = useState(null);
   const [delivery, setDelivery] = useState(null);
+  const [riderLocation, setRiderLocation] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const socketRef = useRef(null);
+  const mapRef = useRef(null);
 
   const fetchOrder = async (num, phone) => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.get(`/orders/track/${num}`, {
-        params: phone ? { phone } : {},
-      });
+      const res = await api.get(`/orders/track/${num}`, { params: phone ? { phone } : {} });
       setOrder(res.data);
 
       if (res.data.orderType === 'Delivery') {
         try {
           const deliveryRes = await api.get(`/deliveries/order/${res.data._id}`);
           setDelivery(deliveryRes.data);
+          if (deliveryRes.data.riderId?.location?.coordinates) {
+            const [lng, lat] = deliveryRes.data.riderId.location.coordinates;
+            setRiderLocation({ lat, lng });
+          }
         } catch (err) {
-          console.log('No delivery record yet');
+          if (err.response?.status === 404) console.log('ℹ️ No delivery record yet');
+          else console.error('Error fetching delivery:', err);
           setDelivery(null);
         }
       }
@@ -63,24 +76,21 @@ const OrderTracking = () => {
   };
 
   useEffect(() => {
-    if (paramOrderNumber) {
-      fetchOrder(paramOrderNumber);
-    }
+    if (paramOrderNumber) fetchOrder(paramOrderNumber);
   }, [paramOrderNumber]);
 
-  // ✅ Live socket updates — FIXED (no reload needed)
+  // Socket for live updates
   useEffect(() => {
     if (!order) return;
-
     const socket = io(socketUrl);
+    socketRef.current = socket;
 
     socket.on('order-updated', (updated) => {
       if (updated.orderNumber === order.orderNumber) {
         setOrder(updated);
         toast.info(`📦 Order status: ${updated.status}`);
-
-        // ✅ Agar order delivery hai aur delivery state null hai toh refetch karein
-        if (updated.orderType === 'Delivery' && !delivery) {
+        // If order becomes Ready and delivery not yet fetched, fetch it
+        if (updated.orderType === 'Delivery' && !delivery && updated.status === 'Ready') {
           api.get(`/deliveries/order/${updated._id}`)
             .then(res => setDelivery(res.data))
             .catch(() => console.log('Delivery not found yet'));
@@ -89,76 +99,53 @@ const OrderTracking = () => {
     });
 
     socket.on('delivery-status-update', (data) => {
-      console.log('📡 Delivery status update received:', data);
-
-      // ✅ Agar delivery exist karti hai aur match karti hai toh update karein
       if (delivery && data.deliveryId === delivery._id) {
         setDelivery(prev => ({ ...prev, status: data.status }));
         toast.info(`🚚 Delivery status: ${data.status}`);
-      } 
-      // ✅ Agar delivery null hai (page load ke waqt) toh fetch karke laayein
-      else if (!delivery) {
+      } else if (!delivery) {
         api.get(`/deliveries/order/${order._id}`)
-          .then(res => {
-            setDelivery(res.data);
-            toast.info(`🚚 Delivery status: ${res.data.status}`);
-          })
+          .then(res => setDelivery(res.data))
           .catch(() => console.log('Delivery not found yet'));
       }
     });
 
-    return () => socket.disconnect();
-  }, [order, delivery]); // ✅ dependency array mein order aur delivery dono hain
+    socket.on('rider-location-update', (data) => {
+      setRiderLocation({ lat: data.lat, lng: data.lng });
+    });
+
+    return () => { socket.disconnect(); socketRef.current = null; };
+  }, [order, delivery]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (!orderNumberInput) {
-      toast.error('Please enter an order number');
-      return;
-    }
+    if (!orderNumberInput) { toast.error('Please enter an order number'); return; }
     navigate(`/track/${orderNumberInput.trim()}`);
     fetchOrder(orderNumberInput.trim(), phoneInput.trim());
   };
 
-  // ✅ FIXED: Combined steps logic (Completed ko end mein le gaye)
   const getCombinedSteps = () => {
     if (!order) return [];
-
     const orderStatusIdx = ORDER_STATUS_LIST.indexOf(order.status);
 
-    // 1. Kitchen steps: Pending, Preparing, Ready
     const kitchenSteps = KITCHEN_STEPS.map((label, idx) => ({
-      label: label,
+      label,
       completed: orderStatusIdx >= idx,
       active: order.status === label,
     }));
-
     let allSteps = [...kitchenSteps];
 
-    // 2. Delivery steps (sirf tab dikhayein jab order 'Ready' ho aur Delivery ho)
     if (order.orderType === 'Delivery' && delivery && orderStatusIdx >= 2) {
-      const deliveryIdx = DELIVERY_STEP_MAP.findIndex(
-        (step) => step.key === delivery.status
-      );
-
+      const deliveryIdx = DELIVERY_STEP_MAP.findIndex(step => step.key === delivery.status);
       const deliverySteps = DELIVERY_STEP_MAP.map((step, idx) => ({
         label: step.label,
-        key: step.key,
         completed: deliveryIdx >= idx,
         active: delivery.status === step.key,
       }));
-
       allSteps = [...allSteps, ...deliverySteps];
     }
 
-    // 3. ✅ Completed ko SAB SE AKHRI STEP banayein (sirf tab jab order Completed ho)
     if (order.status === 'Completed') {
-      allSteps.push({
-        label: 'Completed',
-        key: 'completed',
-        completed: true,
-        active: false,
-      });
+      allSteps.push({ label: 'Completed', completed: true, active: false });
     }
 
     return allSteps;
@@ -166,9 +153,9 @@ const OrderTracking = () => {
 
   const steps = getCombinedSteps();
 
-  if (loading) {
-    return <div className="flex justify-center py-20">Loading...</div>;
-  }
+  const showMap = delivery && (delivery.status === 'on_way' || delivery.status === 'picked_up') && riderLocation;
+
+  if (loading) return <div className="flex justify-center py-20">Loading...</div>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
@@ -232,7 +219,6 @@ const OrderTracking = () => {
             </span>
           </div>
 
-          {/* Delivery specific info */}
           {order.orderType === 'Delivery' && delivery && (
             <div className="mb-4 text-sm">
               <p className="text-gray-500">🚚 Rider: {delivery.riderId?.name || 'Not assigned yet'}</p>
@@ -240,7 +226,6 @@ const OrderTracking = () => {
             </div>
           )}
 
-          {/* Stepper - combined */}
           {order.status !== 'Cancelled' && (
             <div className="mb-6">
               <div className="flex items-center justify-between overflow-x-auto">
@@ -273,7 +258,6 @@ const OrderTracking = () => {
             </div>
           )}
 
-          {/* Order items */}
           <div className="border-t pt-3 space-y-1 text-sm">
             {order.items.map((item, idx) => (
               <div key={idx} className="flex justify-between">
@@ -286,6 +270,28 @@ const OrderTracking = () => {
             <span>Total</span>
             <span>Rs {order.totalAmount}</span>
           </div>
+
+          {showMap && (
+            <div className="mt-4 border-t pt-4">
+              <h4 className="text-sm font-semibold mb-2">📍 Rider's Live Location</h4>
+              <div className="h-60 rounded-lg overflow-hidden">
+                <MapContainer
+                  center={[riderLocation.lat, riderLocation.lng]}
+                  zoom={15}
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                  />
+                  <Marker position={[riderLocation.lat, riderLocation.lng]}>
+                    <Popup>Rider is here 🏍️</Popup>
+                  </Marker>
+                </MapContainer>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Map updates every 5 seconds</p>
+            </div>
+          )}
         </motion.div>
       )}
     </div>
