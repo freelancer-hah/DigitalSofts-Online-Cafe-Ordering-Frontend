@@ -5,18 +5,21 @@ import { FaCamera, FaUpload, FaSpinner, FaTimes } from 'react-icons/fa';
 import api from '../../api/api';
 import toast from 'react-hot-toast';
 
-const VisionOrder = () => {
+const VisionOrder = ({ activeWidget, setActiveWidget }) => {
   const { addToCart } = useCart();
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
   const [detectedItem, setDetectedItem] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
-  const [showPanel, setShowPanel] = useState(false);
   const [confidence, setConfidence] = useState(0);
   const [description, setDescription] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [showUpload, setShowUpload] = useState(true);
+
+  // ✅ showPanel now derives from the shared parent state instead of local state
+  const showPanel = activeWidget === 'vision';
+  const setShowPanel = (val) => setActiveWidget(val ? 'vision' : null);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -34,7 +37,7 @@ const VisionOrder = () => {
     setAiModel('');
     setConfidence(0);
     setShowUpload(true);
-    
+
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result);
@@ -131,7 +134,7 @@ const VisionOrder = () => {
   };
 
   return (
-    <div className="fixed bottom-44 right-4 z-50">
+    <div className="fixed bottom-24 right-4 z-[9999]">
       {/* Vision Button */}
       <motion.button
         whileHover={{ scale: 1.1 }}
@@ -148,8 +151,9 @@ const VisionOrder = () => {
           initial={{ opacity: 0, y: 20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
-          className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
-          style={{ maxHeight: '80vh' }}
+          // ✅ bottom-full + mb-3 anchors the panel directly above THIS button
+          className="absolute bottom-full mb-3 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+          style={{ maxHeight: '70vh', zIndex: 99999 }}
         >
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-3 flex justify-between items-center flex-shrink-0">
             <div>
@@ -158,15 +162,15 @@ const VisionOrder = () => {
               </h3>
               <p className="text-xs text-purple-200">Upload food photo to order</p>
             </div>
-            <button 
-              onClick={() => setShowPanel(false)} 
+            <button
+              onClick={() => setShowPanel(false)}
               className="text-white/80 hover:text-white"
             >
               <FaTimes />
             </button>
           </div>
 
-          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 60px)' }}>
+          <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(70vh - 60px)' }}>
             {/* ✅ Image Upload - Shows when showUpload is true */}
             {showUpload && (
               <label className="block w-full p-4 border-2 border-dashed border-gray-300 rounded-xl text-center cursor-pointer hover:border-purple-400 transition">
@@ -233,7 +237,7 @@ const VisionOrder = () => {
                     <p className="text-sm text-gray-500">Rs {detectedItem.price}</p>
                     <div className="flex items-center gap-2 mt-1">
                       <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className="h-full bg-green-500 rounded-full"
                           style={{ width: `${confidence}%` }}
                         />

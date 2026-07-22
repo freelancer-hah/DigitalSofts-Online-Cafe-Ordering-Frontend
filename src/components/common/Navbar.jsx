@@ -1,3 +1,4 @@
+// frontend/src/components/common/Navbar.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../../context/CartContext';
@@ -6,24 +7,25 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingBagIcon, 
   UserCircleIcon,
-  MenuIcon,           // v1 name (instead of Bars3Icon)
-  XIcon,              // v1 name (instead of XMarkIcon)
+  MenuIcon,
+  XIcon,
   ShieldCheckIcon,
   HomeIcon,
   ClipboardListIcon,
   UsersIcon,
   CakeIcon,
   ChartBarIcon,
-  LogoutIcon,         // v1 name (instead of ArrowRightOnRectangleIcon)
-  SearchIcon,         // v1 name (instead of MagnifyingGlassIcon)
+  LogoutIcon,
+  SearchIcon,
   PhoneIcon,
   InformationCircleIcon,
-  CogIcon             // v1 name (instead of Cog6ToothIcon)
+  CogIcon,
 } from '@heroicons/react/outline';
+import { FaMotorcycle } from 'react-icons/fa';
 
 const Navbar = () => {
   const { cartCount } = useCart();
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isRider, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -31,9 +33,7 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -63,6 +63,11 @@ const Navbar = () => {
     { to: '/admin/users', label: 'Users', icon: <UsersIcon className="h-5 w-5" /> },
   ];
 
+  // Rider navigation (just a single link to dashboard)
+  const riderNavLinks = [
+    { to: '/rider/dashboard', label: 'Rider Dashboard', icon: <FaMotorcycle className="h-5 w-5" /> },
+  ];
+
   const isActive = (path) => location.pathname === path;
 
   return (
@@ -80,7 +85,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between h-14 sm:h-16 lg:h-20">
           {/* Logo */}
           <Link 
-            to={isAdmin ? "/admin/dashboard" : "/"} 
+            to={isAdmin ? "/admin/dashboard" : isRider ? "/rider/dashboard" : "/"} 
             className="flex items-center space-x-1 sm:space-x-2 flex-shrink-0"
           >
             <span className="text-lg sm:text-xl lg:text-2xl font-bold text-white">
@@ -94,12 +99,16 @@ const Navbar = () => {
                 Admin
               </span>
             )}
+            {isRider && (
+              <span className="ml-1 sm:ml-2 text-[10px] sm:text-xs bg-green-400 text-gray-900 px-1.5 sm:px-2.5 py-0.5 rounded-full font-bold shadow-lg">
+                Rider
+              </span>
+            )}
           </Link>
 
-          {/* Desktop Navigation - Hidden on mobile */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
             {isAdmin ? (
-              // Admin Desktop Navigation
               adminNavLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -120,8 +129,28 @@ const Navbar = () => {
                   )}
                 </Link>
               ))
+            ) : isRider ? (
+              riderNavLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  className={`relative px-3 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all duration-200 flex items-center gap-1 lg:gap-2 ${
+                    isActive(link.to)
+                      ? 'bg-white/20 text-white shadow-lg'
+                      : 'text-white/80 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-white/60">{link.icon}</span>
+                  <span className="hidden lg:inline">{link.label}</span>
+                  {isActive(link.to) && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-full"
+                    />
+                  )}
+                </Link>
+              ))
             ) : (
-              // User Desktop Navigation
               userNavLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -144,8 +173,8 @@ const Navbar = () => {
               ))
             )}
 
-            {/* Cart - Only for normal users */}
-            {!isAdmin && (
+            {/* Cart - only for normal users (not admin or rider) */}
+            {!isAdmin && !isRider && (
               <Link 
                 to="/cart" 
                 className="relative p-2 rounded-lg hover:bg-white/10 transition-all"
@@ -159,63 +188,88 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Admin Section */}
-            {isAdmin ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
-                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all flex items-center gap-1 lg:gap-2 shadow-lg"
-                >
-                  <ShieldCheckIcon className="h-4 w-4 lg:h-5 lg:w-5" />
-                  <span className="hidden sm:inline">Admin</span>
-                  <span className="ml-0.5 lg:ml-1">▼</span>
-                </button>
-                
-                <AnimatePresence>
-                  {isAdminMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-2 w-48 sm:w-56 bg-white rounded-xl shadow-2xl py-1 border border-gray-100 overflow-hidden z-50"
-                    >
-                      {adminNavLinks.map((link) => (
-                        <Link
-                          key={link.to}
-                          to={link.to}
-                          onClick={() => setIsAdminMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-                        >
-                          <span className="text-gray-400">{link.icon}</span>
-                          {link.label}
-                        </Link>
-                      ))}
-                      <div className="border-t border-gray-100">
-                        <button
-                          onClick={handleLogout}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all"
-                        >
-                          <LogoutIcon className="h-5 w-5 text-red-400" />
-                          Logout
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : (
-              // Admin Login Button
-              <Link
-                to="/admin/login"
-                className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-xs lg:text-sm font-bold transition-all flex items-center gap-1 shadow-lg"
-              >
-                <ShieldCheckIcon className="h-4 w-4" />
-                <span className="hidden xs:inline">Admin</span>
-              </Link>
-            )}
+            {/* Admin / Rider Section */}
+            <div className="flex items-center space-x-1 lg:space-x-2">
+              {isAdmin ? (
+                <div className="relative">
+                  <button
+                    onClick={() => setIsAdminMenuOpen(!isAdminMenuOpen)}
+                    className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all flex items-center gap-1 lg:gap-2 shadow-lg"
+                  >
+                    <ShieldCheckIcon className="h-4 w-4 lg:h-5 lg:w-5" />
+                    <span className="hidden sm:inline">Admin</span>
+                    <span className="ml-0.5 lg:ml-1">▼</span>
+                  </button>
+                  <AnimatePresence>
+                    {isAdminMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 mt-2 w-48 sm:w-56 bg-white rounded-xl shadow-2xl py-1 border border-gray-100 overflow-hidden z-50"
+                      >
+                        {adminNavLinks.map((link) => (
+                          <Link
+                            key={link.to}
+                            to={link.to}
+                            onClick={() => setIsAdminMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
+                          >
+                            <span className="text-gray-400">{link.icon}</span>
+                            {link.label}
+                          </Link>
+                        ))}
+                        <div className="border-t border-gray-100">
+                          <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-all"
+                          >
+                            <LogoutIcon className="h-5 w-5 text-red-400" />
+                            Logout
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ) : isRider ? (
+                <>
+                  <Link
+                    to="/rider/dashboard"
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-bold transition-all flex items-center gap-1 lg:gap-2 shadow-lg"
+                  >
+                    <FaMotorcycle className="h-4 w-4 lg:h-5 lg:w-5" />
+                    <span className="hidden sm:inline">Rider</span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-xs lg:text-sm font-medium transition-all"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/admin/login"
+                    className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-xs lg:text-sm font-bold transition-all flex items-center gap-1 shadow-lg"
+                  >
+                    <ShieldCheckIcon className="h-4 w-4" />
+                    <span className="hidden xs:inline">Admin</span>
+                  </Link>
+                  <Link
+                    to="/rider/login"
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 lg:px-4 py-1.5 lg:py-2 rounded-full text-xs lg:text-sm font-bold transition-all flex items-center gap-1 shadow-lg"
+                  >
+                    <FaMotorcycle className="h-4 w-4" />
+                    <span className="hidden xs:inline">Rider</span>
+                  </Link>
+                </>
+              )}
+            </div>
 
-            {/* User Section - Only for normal users */}
-            {!isAdmin && (
+            {/* User Section - only for normal users */}
+            {!isAdmin && !isRider && (
               <div className="flex items-center space-x-1 lg:space-x-2">
                 {user ? (
                   <>
@@ -254,11 +308,7 @@ const Navbar = () => {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-all"
           >
-            {isMobileMenuOpen ? (
-              <XIcon className="h-6 w-6 text-white" />
-            ) : (
-              <MenuIcon className="h-6 w-6 text-white" />
-            )}
+            {isMobileMenuOpen ? <XIcon className="h-6 w-6 text-white" /> : <MenuIcon className="h-6 w-6 text-white" />}
           </button>
         </div>
       </div>
@@ -274,7 +324,6 @@ const Navbar = () => {
             className="md:hidden bg-gradient-to-b from-orange-700 to-orange-800 px-4 py-3 overflow-hidden border-t border-white/10 max-h-[80vh] overflow-y-auto"
           >
             {isAdmin ? (
-              // ADMIN MOBILE MENU
               <div className="space-y-1">
                 <div className="px-3 py-2 mb-2 border-b border-white/10">
                   <p className="text-xs text-yellow-300 font-medium flex items-center gap-2">
@@ -308,8 +357,41 @@ const Navbar = () => {
                   </button>
                 </div>
               </div>
+            ) : isRider ? (
+              <div className="space-y-1">
+                <div className="px-3 py-2 mb-2 border-b border-white/10">
+                  <p className="text-xs text-green-300 font-medium flex items-center gap-2">
+                    <FaMotorcycle className="h-4 w-4" />
+                    Rider Panel
+                  </p>
+                </div>
+                {riderNavLinks.map((link) => (
+                  <Link
+                    key={link.to}
+                    to={link.to}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-xl text-white/90 hover:text-white hover:bg-white/10 transition-all ${
+                      isActive(link.to) ? 'bg-white/20 text-white' : ''
+                    }`}
+                  >
+                    <span className="text-white/60">{link.icon}</span>
+                    {link.label}
+                    {isActive(link.to) && (
+                      <span className="ml-auto text-[10px] bg-white/20 px-2 py-0.5 rounded-full">Active</span>
+                    )}
+                  </Link>
+                ))}
+                <div className="border-t border-white/10 mt-3 pt-3">
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-300 hover:text-red-200 hover:bg-white/10 transition-all"
+                  >
+                    <LogoutIcon className="h-5 w-5" />
+                    Logout
+                  </button>
+                </div>
+              </div>
             ) : (
-              // USER MOBILE MENU
               <div className="space-y-1">
                 {userNavLinks.map((link) => (
                   <Link
@@ -327,7 +409,6 @@ const Navbar = () => {
                     )}
                   </Link>
                 ))}
-                
                 <div className="border-t border-white/10 mt-3 pt-3">
                   <Link
                     to="/cart"
@@ -342,7 +423,6 @@ const Navbar = () => {
                       </span>
                     )}
                   </Link>
-
                   <Link
                     to="/admin/login"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -351,7 +431,14 @@ const Navbar = () => {
                     <ShieldCheckIcon className="h-5 w-5" />
                     Admin Login
                   </Link>
-
+                  <Link
+                    to="/rider/login"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl bg-green-500/20 text-green-300 hover:bg-green-500/30 transition-all font-medium"
+                  >
+                    <FaMotorcycle className="h-5 w-5" />
+                    Rider Login
+                  </Link>
                   {user ? (
                     <>
                       <Link

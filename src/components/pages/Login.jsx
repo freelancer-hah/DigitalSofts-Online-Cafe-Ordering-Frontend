@@ -14,15 +14,24 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const result = await login(email, password);
     setLoading(false);
-    
+
     if (result.success) {
-      toast.success('Welcome back!');
-      navigate('/');
+      const { user } = result;
+      // ✅ Role-based redirection
+      if (user.role === 'rider') {
+        toast.success('Welcome Rider!');
+        navigate('/rider/dashboard');
+      } else if (user.role === 'admin') {
+        navigate('/admin/dashboard');
+      } else {
+        toast.success('Welcome back!');
+        navigate('/');
+      }
     } else {
-      toast.error(result.error);
+      toast.error(result.error || 'Login failed');
     }
   };
 

@@ -11,11 +11,12 @@ import {
   ClipboardListIcon,
   CheckCircleIcon,
   ClockIcon,
-  ChartBarIcon
+  ChartBarIcon,
+  TruckIcon  // ✅ Import TruckIcon
 } from '@heroicons/react/outline';
 import toast from 'react-hot-toast';
 import ForecastDashboard from './ForecastDashboard';
-import AbandonedCarts from './AbandonedCarts'; // ✅ ADD THIS
+import AbandonedCarts from './AbandonedCarts';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -149,6 +150,13 @@ const AdminDashboard = () => {
               📋 Menu
             </button>
             <button
+              onClick={() => navigate('/admin/deliveries')}  // ✅ New button
+              className="bg-orange-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-orange-600 transition text-sm flex-1 sm:flex-none text-center flex items-center justify-center gap-1"
+            >
+              <TruckIcon className="h-4 w-4" />
+              Deliveries
+            </button>
+            <button
               onClick={() => setShowForecast(!showForecast)}
               className="bg-purple-500 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-purple-600 transition text-sm flex-1 sm:flex-none text-center flex items-center justify-center gap-1"
             >
@@ -208,7 +216,7 @@ const AdminDashboard = () => {
           </motion.div>
         )}
 
-        {/* ✅ Abandoned Carts Section */}
+        {/* Abandoned Carts Section */}
         <div className="mt-6">
           <AbandonedCarts />
         </div>

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useCart } from '../../context/CartContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaMicrophone, 
+import {
+  FaMicrophone,
   FaStop,
   FaTimes,
   FaVolumeUp,
@@ -14,19 +14,22 @@ import api from '../../api/api';
 // Speech Recognition Setup
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-const VoiceOrdering = () => {
+const VoiceOrdering = ({ activeWidget, setActiveWidget }) => {
   const { addToCart, cart, clearCart } = useCart();
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [detectedItems, setDetectedItems] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [showPanel, setShowPanel] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [isSupported, setIsSupported] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isMenuLoaded, setIsMenuLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+
+  // ✅ showPanel now derives from the shared parent state instead of local state
+  const showPanel = activeWidget === 'voice';
+  const setShowPanel = (val) => setActiveWidget(val ? 'voice' : null);
+
   const autoAddTimeout = useRef(null);
 
   // Fetch menu items on mount
@@ -91,7 +94,7 @@ const VoiceOrdering = () => {
         if (autoAddTimeout.current) {
           clearTimeout(autoAddTimeout.current);
         }
-        
+
         autoAddTimeout.current = setTimeout(() => {
           detectAndAddItems(finalTranscript);
         }, 1500);
@@ -126,7 +129,7 @@ const VoiceOrdering = () => {
   const detectAndAddItems = (text) => {
     if (isProcessing) return;
     if (!text || text.trim().length === 0) return;
-    
+
     if (!isMenuLoaded || menuItems.length === 0) {
       toast.error('Menu is still loading. Please try again in a moment.');
       return;
@@ -136,7 +139,7 @@ const VoiceOrdering = () => {
     const detected = [];
     const addedNames = new Set();
     const lowerText = text.toLowerCase().trim();
-    
+
     console.log('🔍 Searching in menu:', menuItems.map(i => i.name));
     console.log('🎤 Text:', lowerText);
 
@@ -154,7 +157,7 @@ const VoiceOrdering = () => {
     menuItems.forEach(item => {
       const itemName = item.name.toLowerCase();
       const words = itemName.split(' ');
-      
+
       // Strategy 1: Exact match
       if (lowerText.includes(itemName) && !addedNames.has(item.name)) {
         const qty = extractQuantity(lowerText);
@@ -163,7 +166,7 @@ const VoiceOrdering = () => {
         console.log(`✅ Exact match: ${item.name} x${qty}`);
         return;
       }
-      
+
       // Strategy 2: Word-by-word (for multi-word items)
       if (words.length > 1) {
         let matchedCount = 0;
@@ -177,7 +180,7 @@ const VoiceOrdering = () => {
           console.log(`✅ Partial match: ${item.name} x${qty}`);
         }
       }
-      
+
       // Strategy 3: Single word match
       if (words.length === 1 && words[0].length > 2 && !addedNames.has(item.name)) {
         const regex = new RegExp(`\\b${words[0]}\\b`, 'i');
@@ -215,25 +218,25 @@ const VoiceOrdering = () => {
           addToCart(item);
         }
       });
-      
+
       const itemNames = detected.map(i => `${i.quantity || 1}x ${i.name}`).join(', ');
       toast.success(`🛒 Added ${itemNames} to cart!`);
-      
+
       setDetectedItems(detected);
       setShowPanel(true);
-      
+
       setTimeout(() => {
         setShowPanel(false);
         setDetectedItems([]);
         setTranscript('');
       }, 4000);
-      
+
     } else {
       const suggestions = menuItems.slice(0, 5).map(i => i.name).join(', ');
       toast.error(`❌ Could not find "${text}". Try: ${suggestions}`);
       setShowPanel(true);
     }
-    
+
     setIsProcessing(false);
   };
 
@@ -297,32 +300,31 @@ const VoiceOrdering = () => {
   // Show loading state
   if (isLoading) {
     return (
-      <div className="fixed bottom-24 right-4 z-50">
+      <div className="fixed bottom-[168px] right-4 z-[9999]">
         <button className="p-4 rounded-full shadow-2xl bg-gray-400 text-white cursor-not-allowed" disabled>
           <FaSpinner className="h-8 w-8 animate-spin" />
         </button>
-        <div className="absolute bottom-20 right-0 w-64 bg-white rounded-2xl shadow-2xl p-3 text-center">
-          <p className="text-xs text-gray-500">⏳ Loading menu...</p>
-        </div>
       </div>
     );
   }
 
   if (!isSupported) {
     return (
-      <div className="fixed bottom-24 right-4 z-50">
+      <div className="fixed bottom-[168px] right-4 z-[9999]">
         <button className="p-4 rounded-full shadow-2xl bg-gray-400 text-white cursor-not-allowed" disabled>
           <FaMicrophone className="h-8 w-8" />
         </button>
-        <div className="absolute bottom-20 right-0 w-80 bg-white rounded-2xl shadow-2xl p-4 text-center">
-          <p className="text-sm text-gray-600">⚠️ Voice not supported.<br/><span className="text-xs text-gray-400">Use Chrome</span></p>
-        </div>
+        {showPanel && (
+          <div className="absolute bottom-full mb-3 right-0 w-80 bg-white rounded-2xl shadow-2xl p-4 text-center" style={{ zIndex: 99999 }}>
+            <p className="text-sm text-gray-600">⚠️ Voice not supported.<br/><span className="text-xs text-gray-400">Use Chrome</span></p>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="fixed bottom-24 right-4 z-50">
+    <div className="fixed bottom-[168px] right-4 z-[9999]">
       {/* Voice Button - WITHOUT CART BADGE */}
       <motion.button
         whileHover={{ scale: 1.1 }}
@@ -349,7 +351,9 @@ const VoiceOrdering = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="absolute bottom-20 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[80vh]"
+            // ✅ bottom-full + mb-3 anchors the panel directly above THIS button
+            className="absolute bottom-full mb-3 right-0 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden max-h-[70vh]"
+            style={{ zIndex: 99999 }}
           >
             <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-3 flex justify-between items-center">
               <div className="flex items-center gap-2">
