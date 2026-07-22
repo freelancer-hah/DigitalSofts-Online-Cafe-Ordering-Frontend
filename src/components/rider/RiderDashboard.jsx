@@ -11,7 +11,7 @@ const RiderDashboard = () => {
   const watchIdRef = useRef(null);
 
   // ==========================================
-  // 📡 FETCH DATA (Fixed API calls)
+  // 📡 FETCH DATA
   // ==========================================
   const fetchData = async () => {
     try {
@@ -19,13 +19,13 @@ const RiderDashboard = () => {
       const profileRes = await api.get('/riders/profile');
       setRiderStatus(profileRes.data.status);
 
-      // ✅ 2. Rider deliveries — FIXED: /deliveries/my (not /rider)
+      // ✅ 2. Rider deliveries
       const deliveriesRes = await api.get('/deliveries/my');
       setDeliveries(deliveriesRes.data);
 
-      // ✅ 3. Active delivery (picked_up / on_way)
+      // ✅ 3. Active delivery — FIXED: 'accepted' bhi shamil kiya
       const active = deliveriesRes.data.find(
-        (d) => d.status === 'picked_up' || d.status === 'on_way'
+        (d) => d.status === 'accepted' || d.status === 'picked_up' || d.status === 'on_way'
       );
       if (active) {
         setCurrentDeliveryId(active._id);
@@ -40,7 +40,7 @@ const RiderDashboard = () => {
   };
 
   // ==========================================
-  // 📍 LOCATION SHARING (FIXED: sirf currentDeliveryId)
+  // 📍 LOCATION SHARING
   // ==========================================
   useEffect(() => {
     if (currentDeliveryId) {
@@ -72,7 +72,6 @@ const RiderDashboard = () => {
         const { latitude, longitude } = position.coords;
         setLocation({ lat: latitude, lng: longitude });
 
-        // ✅ FIXED: PUT /deliveries/:deliveryId/location
         try {
           await api.put(`/deliveries/${currentDeliveryId}/location`, {
             lat: latitude,
@@ -105,10 +104,9 @@ const RiderDashboard = () => {
   };
 
   // ==========================================
-  // 🚚 DELIVERY ACTIONS (FIXED API CALLS)
+  // 🚚 DELIVERY ACTIONS
   // ==========================================
 
-  // ✅ Accept — PUT /deliveries/:deliveryId/accept
   const acceptDelivery = async (deliveryId) => {
     try {
       await api.put(`/deliveries/${deliveryId}/accept`);
@@ -119,7 +117,6 @@ const RiderDashboard = () => {
     }
   };
 
-  // ✅ Pickup — PUT /deliveries/:deliveryId/pickup
   const pickUpDelivery = async (deliveryId) => {
     try {
       await api.put(`/deliveries/${deliveryId}/pickup`);
@@ -130,8 +127,6 @@ const RiderDashboard = () => {
     }
   };
 
-  // ✅ Start Delivery — PUT /deliveries/:deliveryId/start
-  // Note: Backend currently ignores lat/lng, but sending them doesn't hurt.
   const startDelivery = async (deliveryId) => {
     try {
       await api.put(`/deliveries/${deliveryId}/start`, {
@@ -145,7 +140,6 @@ const RiderDashboard = () => {
     }
   };
 
-  // ✅ Complete — PUT /deliveries/:deliveryId/complete
   const completeDelivery = async (deliveryId) => {
     try {
       await api.put(`/deliveries/${deliveryId}/complete`);
