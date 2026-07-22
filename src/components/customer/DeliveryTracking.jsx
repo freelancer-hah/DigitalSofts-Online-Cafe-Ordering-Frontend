@@ -1,13 +1,12 @@
 // frontend/src/components/customer/DeliveryTracking.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import api from '../../api/api'; // ✅ ADDED
+import api from '../../api/api';
 import { io } from 'socket.io-client';
 import toast from 'react-hot-toast';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { FaStar, FaPhone } from 'react-icons/fa'; // ✅ ADDED
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
