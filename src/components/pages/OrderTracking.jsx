@@ -4,6 +4,7 @@ import api from '../../api/api';
 import { io } from 'socket.io-client';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import DeliveryTracking from '../customer/DeliveryTracking';
 
 const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
@@ -270,6 +271,13 @@ const OrderTracking = () => {
                   </React.Fragment>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Embedded Real-Time Delivery Tracking Map for Customers (InDrive style) */}
+          {order.orderType === 'Delivery' && (
+            <div className="my-6">
+              <DeliveryTracking orderIdProp={order.orderNumber} deliveryProp={delivery} />
             </div>
           )}
 
